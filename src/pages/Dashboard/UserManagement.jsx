@@ -233,6 +233,7 @@ const UserManagement = () => {
   const { canAdd, canEdit, canDelete } = useAcl("userManagement");
   const canAllocateAcl =
     String(authUser?.role || "").toLowerCase() === "admin" ||
+    !!authUser?.is_super_admin ||
     !!authUser?.acl_assignable;
   const [aclUser, setAclUser] = useState(null);
   // State variables
@@ -270,7 +271,7 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const data = await UserManagementService.getAllUsers();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching users:", error);
       Swal.fire({

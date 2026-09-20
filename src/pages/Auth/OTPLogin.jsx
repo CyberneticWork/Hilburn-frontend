@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Key, LogIn, ArrowLeft } from 'lucide-react';
 import axios from '../../utils/axios';
 import { useBranding } from '../../contexts/BrandingContext';
+import BrandLogo from '../../components/BrandLogo';
 import { setToken } from '../../services/TokenService';
 import { setUser, homePathForUser } from '../../services/UserService';
 
@@ -72,11 +73,11 @@ export default function OTPLogin() {
       <div className="relative w-full max-w-md anim-rise">
         <div className="text-center mb-8">
           {branding?.logo_url ? (
-            <img
+            <BrandLogo
               src={branding.logo_url}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white object-contain p-1.5 shadow-lg"
+              alt={companyName}
+              className="mx-auto mb-4 h-16 max-w-[12rem] justify-center"
+              imgClassName="block h-full w-auto max-w-full object-contain object-center drop-shadow-[0_1px_10px_rgba(255,255,255,0.28)]"
             />
           ) : null}
           <p className="font-display text-3xl font-bold text-white">{companyName}</p>

@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const hasPermission = (module, action) => {
-    if (String(user?.role || "").toLowerCase() === "admin") {
+    if (String(user?.role || "").toLowerCase() === "admin" || user?.is_super_admin) {
       return true;
     }
     const block = userPermissions[module] || {};

@@ -124,8 +124,8 @@ export default function UserAclModal({ user, onClose }) {
               Allocate ACL — {user.name}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Role: <span className="font-medium capitalize">{user.role}</span>. Only company features
-              enabled in Cybernetic Admin appear here. Tick View / Add / Edit / Delete / Approve for this HR user.
+              Role: <span className="font-medium capitalize">{user.role}</span>. Tick User Management and
+              Labor Management if this role should use those screens. Access Control stays with Admin.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {featureChips.map(([key, label]) => (

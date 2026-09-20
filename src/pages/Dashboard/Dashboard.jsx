@@ -518,6 +518,15 @@ const Dashboard = ({ user, onLogout }) => {
   const [lateCount, setLateCount] = useState(0);
   const responsive = getResponsive();
 
+  useEffect(() => {
+    const onNavigate = (event) => {
+      const id = event?.detail;
+      if (typeof id === "string" && id) setActiveItem(id);
+    };
+    window.addEventListener("hr:navigate", onNavigate);
+    return () => window.removeEventListener("hr:navigate", onNavigate);
+  }, []);
+
   // Fetch employee profile for employee role
   useEffect(() => {
     if (user.role === "employee" && user.employee_id) {

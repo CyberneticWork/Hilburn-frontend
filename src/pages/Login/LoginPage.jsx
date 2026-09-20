@@ -5,6 +5,7 @@ import { setUser } from "../../services/UserService";
 import { Shield, Users, Clock3, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import { useBranding } from "../../contexts/BrandingContext";
+import BrandLogo from "../../components/BrandLogo";
 
 function companyInitials(name) {
   const parts = String(name || "HR")
@@ -102,11 +103,10 @@ function LoginPage({ onSuccess }) {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-4 rounded-2xl bg-white/12 border border-white/20 px-4 py-3 backdrop-blur-md">
             {branding?.logo_url ? (
-              <img
+              <BrandLogo
                 src={branding.logo_url}
                 alt={companyName}
-                referrerPolicy="no-referrer"
-                className="h-14 w-14 rounded-xl bg-white object-contain p-1.5 shadow-lg"
+                className="h-14 max-w-[11rem]"
               />
             ) : (
               <div

@@ -24,8 +24,8 @@ import { useBranding } from "../../contexts/BrandingContext";
 import { isEmployeeUser } from "../../services/UserService";
 import config from "@src/config";
 import { mediaUrl } from "../../utils/mediaUrl";
-import { googleDriveLogoUrl } from "../../utils/googleDriveLogo";
 import { fetchCompanies } from "../../services/ApiDataService";
+import BrandLogo from "../../components/BrandLogo";
 
 const Sidebar = ({
   user,
@@ -236,13 +236,14 @@ const Sidebar = ({
   // Permission අනුව මෙනු Filter කිරීම (Admin සඳහා පමණයි මෙය වැඩ කරන්නේ)
   const filterMenuItems = (items, ancestors = []) => {
     if (isEmployeeUser(user)) return items;
-    const isAdmin = String(user?.role || "").toLowerCase() === "admin";
+    const isAdmin =
+      String(user?.role || "").toLowerCase() === "admin" || !!user?.is_super_admin;
 
     return items
       .map((item) => {
         const alwaysShowItems = ["dashboard", "myProfile", "changePassword"];
         if (alwaysShowItems.includes(item.id)) return item;
-        if (isAdmin && ["userManagement", "accessControl"].includes(item.id)) {
+        if (isAdmin && ["userManagement", "accessControl", "laborManagement"].includes(item.id)) {
           return item;
         }
 
@@ -280,17 +281,10 @@ const Sidebar = ({
           boxShadow: "8px 0 40px rgba(var(--brand-ink-rgb), 0.25)",
         }}
       >
-        <div className="p-5 border-b border-white/10 flex-shrink-0">
-          <div className="flex flex-col items-stretch gap-3">
+        <div className="px-4 pt-3 pb-4 border-b border-white/10 flex-shrink-0">
+          <div className="flex flex-col items-stretch gap-2.5">
             {companyLogo && String(user?.role || "").toLowerCase() !== "employee" ? (
-              <div className="flex items-center justify-center rounded-2xl bg-white px-3 py-2.5 shadow-inner">
-                <img
-                  src={googleDriveLogoUrl(companyLogo)}
-                  alt={companyName || "Company logo"}
-                  referrerPolicy="no-referrer"
-                  className="h-12 max-h-14 w-auto max-w-full object-contain"
-                />
-              </div>
+              <BrandLogo src={companyLogo} alt={companyName || "Company logo"} className="h-[84px] max-w-full" />
             ) : (
               <div
                 className="self-start p-2.5 rounded-2xl shadow-lg"
@@ -328,7 +322,7 @@ const Sidebar = ({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
               <p className="text-[10px] font-semibold text-amber-300 uppercase tracking-wider">
-                {user?.role}
+                {user?.is_super_admin ? "Super Admin" : user?.role_label || user?.role}
               </p>
             </div>
           </div>

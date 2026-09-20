@@ -1,9 +1,16 @@
 import axios from "../utils/axios";
 
+const asUserList = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.users)) return data.users;
+  return [];
+};
+
 const UserManagementService = {
   getAllUsers: async () => {
     const response = await axios.get("/users");
-    return response.data;
+    return asUserList(response.data);
   },
 
   getUserById: async (id) => {
