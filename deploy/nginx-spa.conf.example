@@ -1,16 +1,16 @@
-# React SPA (HR frontend) — hilburn / urbanhr / jcfood / spmhr
+# React SPA (HR frontend) — BDC
 # Direct URLs like /cybernetic-admin and /dashboard must fall through to index.html.
 # Without try_files, nginx returns its own "404 Not Found".
 #
-# hilburn.cyberneticde.site = this SPA
-# apihilburn.cyberneticde.site = Laravel (see backend deploy/nginx-laravel.conf.example)
-# Never point apihilburn at this frontend root or at CityGreen.
+# bdchrnew.cyberneticde.site = this SPA
+# apibdchrnew.cyberneticde.site = Laravel (see backend deploy/nginx-laravel.conf.example)
+# Never point apibdchrnew at this frontend root or at another tenant.
 
 server {
     listen 443 ssl http2;
-    server_name hilburn.cyberneticde.site;
+    server_name bdchrnew.cyberneticde.site;
 
-    root /var/www/sohan_hr_system_frontend/dist;
+    root /var/www/bdc-frontend/dist;
     index index.html;
 
     location / {
