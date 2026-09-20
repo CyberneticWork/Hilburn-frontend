@@ -74,6 +74,7 @@ import NopayWorkingDaysSettings from "@dashboard/NopayWorkingDaysSettings";
 import ViewLoans from "@dashboard/viewLoans";
 import SalaryPage from "@dashboard/SalaryPage";
 import UserManagement from "@dashboard/UserManagement";
+import AccessControl from "@dashboard/AccessControl";
 import LaborManagement from "@dashboard/LaborManagement";
 import Chatbot from "./Chatbot";
 // Import PMS components
@@ -851,6 +852,12 @@ const Dashboard = ({ user, onLogout }) => {
         return (
           <ProtectedComponent module="userManagement" action="view">
             <UserManagement />
+          </ProtectedComponent>
+        );
+      case "accessControl":
+        return (
+          <ProtectedComponent module="accessControl" action="view">
+            <AccessControl />
           </ProtectedComponent>
         );
       case "laborManagement":

@@ -231,7 +231,9 @@ const UserFormModal = ({
 const UserManagement = () => {
   const { user: authUser } = useAuth();
   const { canAdd, canEdit, canDelete } = useAcl("userManagement");
-  const canAllocateAcl = (authUser?.role || "").toLowerCase() === "admin";
+  const canAllocateAcl =
+    String(authUser?.role || "").toLowerCase() === "admin" ||
+    !!authUser?.acl_assignable;
   const [aclUser, setAclUser] = useState(null);
   // State variables
   const [users, setUsers] = useState([]);
@@ -463,7 +465,7 @@ console.log("Submitting form data:", currentUser, formData);
           </h1>
         </div>
         <p className="text-blue-200 text-center mt-2 text-sm sm:text-base">
-          Manage system users and access control
+          Manage system users. Admin can allocate ACL to HR, Supervisor, and User accounts.
         </p>
       </div>
 
@@ -631,10 +633,11 @@ console.log("Submitting form data:", currentUser, formData);
                             ["hr", "supervisor", "user"].includes(String(user.role || "").toLowerCase()) && (
                             <button
                               onClick={() => setAclUser(user)}
-                              className="p-2 bg-teal-100 text-teal-800 rounded-lg hover:bg-teal-200 transition-colors"
+                              className="inline-flex items-center gap-1 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
                               title="Allocate ACL"
                             >
-                              <Shield size={16} />
+                              <Shield size={14} />
+                              ACL
                             </button>
                           )}
                           {canEdit && (

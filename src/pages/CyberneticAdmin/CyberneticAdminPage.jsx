@@ -176,7 +176,16 @@ export default function CyberneticAdminPage() {
       setAuthed(true);
       setPassword("");
     } catch (err) {
-      setLoginError(err?.response?.data?.message || "Invalid password.");
+      const apiMessage = err?.response?.data?.message;
+      if (apiMessage) {
+        setLoginError(apiMessage);
+      } else if (!err?.response) {
+        setLoginError(
+          "Login was blocked before the password was checked (CORS or the API host is not Laravel). Open Network and confirm the request reaches /index.php?__lr=/api/cybernetic-admin/login."
+        );
+      } else {
+        setLoginError("Invalid password.");
+      }
     } finally {
       setLoginLoading(false);
     }

@@ -17,12 +17,15 @@ import {
   MessageCircle,
   Key,
   Briefcase,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBranding } from "../../contexts/BrandingContext";
 import { isEmployeeUser } from "../../services/UserService";
 import config from "@src/config";
 import { mediaUrl } from "../../utils/mediaUrl";
+import { googleDriveLogoUrl } from "../../utils/googleDriveLogo";
+import { fetchCompanies } from "../../services/ApiDataService";
 
 const Sidebar = ({
   user,
@@ -36,6 +39,29 @@ const Sidebar = ({
   const authContext = useAuth() || {};
   const hasPermission = authContext.hasPermission || (() => true);
   const { branding } = useBranding();
+  const [companyLogo, setCompanyLogo] = useState(branding?.logo_url || "");
+  const [companyName, setCompanyName] = useState(branding?.name || "");
+
+  useEffect(() => {
+    if (branding?.logo_url) setCompanyLogo(branding.logo_url);
+    if (branding?.name) setCompanyName(branding.name);
+  }, [branding]);
+
+  useEffect(() => {
+    if (isEmployeeUser(user)) return;
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchCompanies();
+      const list = Array.isArray(rows) ? rows : [];
+      const active = list.find((row) => row.portal_active) || list[0];
+      if (cancelled || !active) return;
+      if (active.logo_url) setCompanyLogo(active.logo_url);
+      if (active.name) setCompanyName(active.name);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const [expandedItems, setExpandedItems] = useState({
     hrMaster: false,
@@ -60,7 +86,7 @@ const Sidebar = ({
     // 2. Admin 
     return [
       { id: "dashboard", name: "Dashboard", icon: Home },
-      //{ id: "chatbot", name: "Chat with System", icon: MessageCircle },
+      { id: "accessControl", name: "Access Control (ACL)", icon: Shield },
       { id: "userManagement", name: "User Management", icon: Users },
       { id: "laborManagement", name: "Labor Management", icon: Briefcase },
       {
@@ -210,12 +236,16 @@ const Sidebar = ({
   // Permission අනුව මෙනු Filter කිරීම (Admin සඳහා පමණයි මෙය වැඩ කරන්නේ)
   const filterMenuItems = (items, ancestors = []) => {
     if (isEmployeeUser(user)) return items;
+    const isAdmin = String(user?.role || "").toLowerCase() === "admin";
 
     return items
       .map((item) => {
         const alwaysShowItems = ["dashboard", "myProfile", "changePassword"];
         if (alwaysShowItems.includes(item.id)) return item;
-        
+        if (isAdmin && ["userManagement", "accessControl"].includes(item.id)) {
+          return item;
+        }
+
         if (item.subItems) {
           const filteredSubItems = filterMenuItems(item.subItems, [...ancestors, item.id]);
           if (filteredSubItems.length > 0 || hasPermission(item.id, "view")) {
@@ -251,18 +281,29 @@ const Sidebar = ({
         }}
       >
         <div className="p-5 border-b border-white/10 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div
-              className="p-2.5 rounded-2xl shadow-lg"
-              style={{
-                background: "linear-gradient(135deg, var(--brand-mint), var(--brand-teal) 50%, var(--brand-coral))",
-              }}
-            >
-              <Building2 className="h-6 w-6 text-white" />
-            </div>
+          <div className="flex flex-col items-stretch gap-3">
+            {companyLogo && String(user?.role || "").toLowerCase() !== "employee" ? (
+              <div className="flex items-center justify-center rounded-2xl bg-white px-3 py-2.5 shadow-inner">
+                <img
+                  src={googleDriveLogoUrl(companyLogo)}
+                  alt={companyName || "Company logo"}
+                  referrerPolicy="no-referrer"
+                  className="h-12 max-h-14 w-auto max-w-full object-contain"
+                />
+              </div>
+            ) : (
+              <div
+                className="self-start p-2.5 rounded-2xl shadow-lg"
+                style={{
+                  background: "linear-gradient(135deg, var(--brand-mint), var(--brand-teal) 50%, var(--brand-coral))",
+                }}
+              >
+                <Building2 className="h-6 w-6 text-white" />
+              </div>
+            )}
             <div>
               <h2 className="font-display font-bold text-white leading-tight text-lg">
-                {user?.role === "employee" ? "Staff Portal" : branding?.name || "HR Dashboard"}
+                {user?.role === "employee" ? "Staff Portal" : companyName || branding?.name || "HR Dashboard"}
               </h2>
               <p className="text-[11px] text-teal-200/80 font-medium tracking-wide">
                 Management Suite

@@ -451,7 +451,7 @@ export default function CreateNewDeduction() {
                         onChange={() => setForm((f) => ({ ...f, deduct_from: "bonus" }))}
                       />
                       Monthly bonus (default)
-                    </label>
+                      </label>
                     <label className="inline-flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -459,8 +459,8 @@ export default function CreateNewDeduction() {
                         onChange={() => setForm((f) => ({ ...f, deduct_from: "basic" }))}
                       />
                       Basic salary
-                    </label>
-                  </div>
+                      </label>
+                    </div>
                 </fieldset>
               )}
               <Field label="Description">
