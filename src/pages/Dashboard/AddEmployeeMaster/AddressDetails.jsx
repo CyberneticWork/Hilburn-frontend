@@ -135,11 +135,19 @@ const AddressDetails = ({ onNext, onPrevious, activeCategory }) => {
     const [types, setTypes] = useState([]);
     const [editingType, setEditingType] = useState(null);
 
+    const getAuthHeaders = useCallback(() => {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      return {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+    }, []);
+
     const fetchTypes = useCallback(async () => {
       setIsLoading(true);
       try {
         const res = await fetch(apiUrl, {
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
         });
 
         if (!res.ok) {
@@ -190,7 +198,7 @@ const AddressDetails = ({ onNext, onPrevious, activeCategory }) => {
 
       const res = await fetch(apiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ description: trimmed }),
       });
 
@@ -212,7 +220,7 @@ const AddressDetails = ({ onNext, onPrevious, activeCategory }) => {
 
       const res = await fetch(`${apiUrl}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ description: trimmed }),
       });
 
@@ -229,7 +237,10 @@ const AddressDetails = ({ onNext, onPrevious, activeCategory }) => {
     }, [apiUrl, fetchTypes, editingType, formData.address.emergencyContact.relationship, selectRelationship]);
 
     const deleteType = useCallback(async (id, description) => {
-      const res = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+      const res = await fetch(`${apiUrl}/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
