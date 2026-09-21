@@ -105,8 +105,8 @@ export default function EmployeeWiseDeduction() {
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Assign Deductions</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Pick a predefined deduction, choose employee or company, then Fixed (range) or
-            Variable (one month). After the end month, nothing is applied.
+            Pick a predefined deduction and assign it to one employee. For salary advance,
+            choose Basic or Bonus per employee.
           </p>
         </div>
         <button
@@ -208,7 +208,7 @@ export default function EmployeeWiseDeduction() {
                   <td className="px-4 py-3 text-slate-600">
                     {String(row.deduct_from || "").toLowerCase() === "basic"
                       ? "Basic salary"
-                      : String(row.deduction_name || "").toLowerCase().includes("advance")
+                      : String(row.deduct_from || "").toLowerCase() === "bonus"
                         ? "Monthly bonus"
                         : "—"}
                   </td>

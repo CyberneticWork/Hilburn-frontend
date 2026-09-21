@@ -59,6 +59,21 @@ const money = (v) =>
     maximumFractionDigits: 2,
   });
 
+function apiErrorText(err, fallback) {
+  const d = err?.response?.data;
+  if (!d) return err?.message || fallback;
+  const parts = [];
+  if (d.message) parts.push(String(d.message));
+  if (d.errors && typeof d.errors === "object") {
+    Object.values(d.errors).forEach((v) => {
+      if (Array.isArray(v)) parts.push(...v.filter(Boolean).map(String));
+      else if (v) parts.push(String(v));
+    });
+  }
+  const text = parts.filter((p) => p && p !== "undefined").join(" ");
+  return text || fallback;
+}
+
 const statusClass = (s) => {
   const v = String(s || "").toUpperCase();
   if (v.includes("APPROV") || v === "ISSUED" || v === "PROCESSED" || v === "ACTIVE") return "bg-emerald-100 text-emerald-800";
@@ -124,6 +139,7 @@ export default function EmployeePortal() {
   });
   const [medicalFile, setMedicalFile] = useState(null);
   const [colleagues, setColleagues] = useState([]);
+  const [coveringFilter, setCoveringFilter] = useState("");
   const [advanceForm, setAdvanceForm] = useState({ amount: "", needed_on: "", reason: "" });
   const [passwordForm, setPasswordForm] = useState({
     current_password: "",
@@ -169,7 +185,7 @@ export default function EmployeePortal() {
     setTimeout(() => {
       setMessage("");
       setError("");
-    }, 3500);
+    }, ok ? 3500 : 8000);
   };
 
   const loadHome = async () => {
@@ -295,9 +311,9 @@ export default function EmployeePortal() {
   useEffect(() => {
     if (view === "leave" || view === "medical") {
       getMyLeaves().then((d) => setLeaveHistory(d.items || [])).catch(() => flash(false, "Could not load leave"));
-      if (home?.leaveWorkflow) {
-        getCoveringColleagues().then((d) => setColleagues(d.items || [])).catch(() => {});
-      }
+      getCoveringColleagues()
+        .then((d) => setColleagues(d.items || []))
+        .catch(() => flash(false, "Could not load covering-person list"));
     }
     if (view === "advance") getMyAdvances().then((d) => setAdvances(d.items || [])).catch(() => flash(false, "Could not load advances"));
     if (view === "time") {
@@ -322,7 +338,7 @@ export default function EmployeePortal() {
     if (view === "loan") {
       getMyLoans().then((d) => setLoans(d.items || [])).catch(() => flash(false, "Could not load loans"));
     }
-  }, [view, month, year]);
+  }, [view, month, year, home?.leaveWorkflow]);
 
   const handleLogout = async () => {
     try {
@@ -406,13 +422,18 @@ export default function EmployeePortal() {
     e.preventDefault();
     try {
       setSaving(true);
+      if (!leaveForm.covering_employee_id) {
+        flash(false, "Select a covering person.");
+        setSaving(false);
+        return;
+      }
       await submitLeave(leaveForm);
       flash(true, "Leave request submitted");
       setLeaveForm({ leave_type: "Casual Leave", leave_from: "", leave_to: "", day_type: "FULL", reason: "", covering_employee_id: "" });
       const data = await getMyLeaves();
       setLeaveHistory(data.items || []);
     } catch (err) {
-      flash(false, err?.response?.data?.message || "Could not submit leave");
+      flash(false, apiErrorText(err, "Could not submit leave"));
     } finally {
       setSaving(false);
     }
@@ -467,7 +488,7 @@ export default function EmployeePortal() {
       const data = await getMyLoans();
       setLoans(data.items || []);
     } catch (err) {
-      flash(false, err?.response?.data?.message || "Could not submit loan request");
+      flash(false, apiErrorText(err, "Could not submit loan request"));
     } finally {
       setSaving(false);
     }
@@ -495,6 +516,11 @@ export default function EmployeePortal() {
     e.preventDefault();
     try {
       setSaving(true);
+      if (!medicalForm.covering_employee_id) {
+        flash(false, "Select a covering person.");
+        setSaving(false);
+        return;
+      }
       await submitLeave(
         {
           ...medicalForm,
@@ -510,7 +536,7 @@ export default function EmployeePortal() {
       const data = await getMyLeaves();
       setLeaveHistory(data.items || []);
     } catch (err) {
-      flash(false, err?.response?.data?.message || "Could not submit medical leave");
+      flash(false, apiErrorText(err, "Could not submit medical leave"));
     } finally {
       setSaving(false);
     }
@@ -531,22 +557,67 @@ export default function EmployeePortal() {
     }
   };
 
-  const coveringSelect = (form, setForm) =>
-    home?.leaveWorkflow ? (
+  const coveringOptions = useMemo(() => {
+    const term = coveringFilter.trim().toLowerCase();
+    if (!term) return colleagues;
+    return colleagues.filter((c) => {
+      const name = `${c.full_name || ""} ${c.name_with_initials || ""} ${c.attendance_employee_no || ""}`.toLowerCase();
+      return name.includes(term);
+    });
+  }, [colleagues, coveringFilter]);
+
+  const searchCovering = async () => {
+    try {
+      const d = await getCoveringColleagues(coveringFilter.trim() ? { q: coveringFilter.trim() } : {});
+      setColleagues(d.items || []);
+      if (!(d.items || []).length) {
+        flash(false, "No covering person matched that search.");
+      }
+    } catch (err) {
+      flash(false, apiErrorText(err, "Could not search covering person"));
+    }
+  };
+
+  const coveringSelect = (form, setForm) => (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-slate-700">
+        Covering person <span className="text-red-500">*</span>
+      </label>
+      <div className="flex gap-2">
+        <input
+          className="flex-1 border rounded-xl px-3 py-2"
+          placeholder="Search name or attendance number"
+          value={coveringFilter}
+          onChange={(e) => setCoveringFilter(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={searchCovering}
+          className="rounded-xl bg-slate-800 px-4 py-2 text-sm text-white"
+        >
+          Find
+        </button>
+      </div>
       <select
         className="w-full border rounded-xl px-3 py-2"
         required
         value={form.covering_employee_id}
         onChange={(e) => setForm({ ...form, covering_employee_id: e.target.value })}
       >
-        <option value="">Covering person</option>
-        {colleagues.map((c) => (
+        <option value="">Select covering person</option>
+        {coveringOptions.map((c) => (
           <option key={c.id} value={c.id}>
             {c.full_name || c.name_with_initials} {c.attendance_employee_no ? `(${c.attendance_employee_no})` : ""}
           </option>
         ))}
       </select>
-    ) : null;
+      {!colleagues.length && (
+        <p className="text-xs text-amber-700">
+          Type a name or attendance number and click Find to add a covering person.
+        </p>
+      )}
+    </div>
+  );
 
   const emp = home?.employee || {};
   const profileRows = [

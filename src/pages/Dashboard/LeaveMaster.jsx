@@ -25,6 +25,7 @@ import {
 } from "../../services/LeaveMaster";
 import { fetchLeaveCalendar } from "../../services/LeaveCalendar";
 import DatePickerInput from "@components/DatePickerInput";
+import { getCoveringColleagues } from "../../services/EmployeePortalService";
 
 const LeaveMaster = ({ employeeProfile }) => {
   // State for form fields
@@ -47,6 +48,7 @@ const LeaveMaster = ({ employeeProfile }) => {
       to: getCurrentDate(),
     },
     reason: "",
+    covering_employee_id: "",
   });
 
   // Loading and notification states
@@ -65,6 +67,8 @@ const LeaveMaster = ({ employeeProfile }) => {
 
   // Add a new state to store employee data
   const [employeeData, setEmployeeData] = useState(null);
+  const [coveringColleagues, setCoveringColleagues] = useState([]);
+  const [coveringFilter, setCoveringFilter] = useState("");
 
   // Auto-fill logged-in employee details
   useEffect(() => {
@@ -87,6 +91,41 @@ const LeaveMaster = ({ employeeProfile }) => {
     }
   }, [employeeProfile]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadCovering = async () => {
+      if (!employeeData?.id && !employeeProfile?.id) {
+        setCoveringColleagues([]);
+        return;
+      }
+      try {
+        if (employeeProfile) {
+          const d = await getCoveringColleagues();
+          if (!cancelled) setCoveringColleagues(d.items || []);
+          return;
+        }
+        const rows = await employeeService.fetchEmployees();
+        const list = Array.isArray(rows) ? rows : rows?.data || [];
+        const selfId = Number(employeeData?.id);
+        const companyId =
+          employeeData?.organization_assignment?.company_id ||
+          employeeData?.organization_assignment?.company?.id;
+        const filtered = list.filter((e) => {
+          if (Number(e.id) === selfId) return false;
+          if (!companyId) return true;
+          const cid = e.organization_assignment?.company_id || e.organization_assignment?.company?.id;
+          return !cid || String(cid) === String(companyId);
+        });
+        if (!cancelled) setCoveringColleagues(filtered);
+      } catch {
+        if (!cancelled) setCoveringColleagues([]);
+      }
+    };
+    loadCovering();
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeData?.id, employeeProfile]);
 
   const fetchLeaveTypes = async () => {
     console.log("Fetching leave types...");
@@ -623,17 +662,33 @@ const LeaveMaster = ({ employeeProfile }) => {
 
   // Add this function at the top level of your component
   const showValidationErrors = (errors) => {
-    const errorList = Object.values(errors)
-      .map((error) => `<li class="text-left">${error}</li>`)
-      .join("");
+    const list = [];
+    const walk = (value) => {
+      if (value == null || value === "") return;
+      if (Array.isArray(value)) {
+        value.forEach(walk);
+        return;
+      }
+      if (typeof value === "object") {
+        Object.entries(value).forEach(([key, item]) => {
+          if (["trace", "exception", "file", "line"].includes(key)) return;
+          walk(item);
+        });
+        return;
+      }
+      const text = String(value);
+      if (text && text !== "undefined") list.push(text);
+    };
+    walk(errors);
+    const errorList = list.map((error) => `<li class="text-left">${error}</li>`).join("");
 
     Swal.fire({
       icon: "error",
-      title: "Limitation exceeded",
+      title: "Cannot submit leave",
       html: `
         <div>
           <ul class="list-disc pl-4 mt-2">
-            ${errorList}
+            ${errorList || "<li>Please check the form and try again.</li>"}
           </ul>
         </div>
       `,
@@ -871,6 +926,17 @@ const LeaveMaster = ({ employeeProfile }) => {
         icon: "error",
         title: "Input Required",
         text: "Please enter an employee number",
+        confirmButtonColor: "#3085d6",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!formData.covering_employee_id) {
+      Swal.fire({
+        icon: "error",
+        title: "Covering person required",
+        text: "Select a covering person. Use search if the list is long.",
         confirmButtonColor: "#3085d6",
       });
       setIsSubmitting(false);
@@ -1142,7 +1208,8 @@ const LeaveMaster = ({ employeeProfile }) => {
         is_half_day: false,
         is_short_leave: false,
         short_leave_slot: null,
-        leave_duration: requestedDuration // කලින් හදපු duration එක මෙතනට දෙනවා
+        leave_duration: requestedDuration, // කලින් හදපු duration එක මෙතනට දෙනවා
+        covering_employee_id: formData.covering_employee_id || null,
       };
 
       const isHalf = formData.leaveDateType === "halfDay";
@@ -1374,6 +1441,7 @@ const LeaveMaster = ({ employeeProfile }) => {
         to: getCurrentDate(),
       },
       reason: "",
+      covering_employee_id: "",
     });
 
     setIsSubmitting(false);
@@ -1836,6 +1904,44 @@ const LeaveMaster = ({ employeeProfile }) => {
 
                     <div className="mt-6">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Covering person <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={coveringFilter}
+                        onChange={(e) => setCoveringFilter(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 mb-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Search name or attendance number"
+                      />
+                      <select
+                        name="covering_employee_id"
+                        value={formData.covering_employee_id}
+                        onChange={handleDateChange}
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      >
+                        <option value="">Select covering person</option>
+                        {(coveringFilter.trim()
+                          ? coveringColleagues.filter((c) => {
+                              const n = `${c.full_name || ""} ${c.name_with_initials || ""} ${c.attendance_employee_no || ""}`.toLowerCase();
+                              return n.includes(coveringFilter.trim().toLowerCase());
+                            })
+                          : coveringColleagues
+                        ).map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.full_name || c.name_with_initials} {c.attendance_employee_no ? `(${c.attendance_employee_no})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      {!coveringColleagues.length && (
+                        <p className="mt-1 text-xs text-amber-700">
+                          No covering-person list yet. Search an employee first, or ask HR to add colleagues in this company.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Reason
                       </label>
                       <textarea
@@ -2202,6 +2308,7 @@ const LeaveMaster = ({ employeeProfile }) => {
       to: getCurrentDate(),
     },
     reason: "",
+    covering_employee_id: "",
   });
 
   // Loading and notification states
@@ -2219,6 +2326,8 @@ const LeaveMaster = ({ employeeProfile }) => {
 
   // Add a new state to store employee data
   const [employeeData, setEmployeeData] = useState(null);
+  const [coveringColleagues, setCoveringColleagues] = useState([]);
+  const [coveringFilter, setCoveringFilter] = useState("");
 
   // Auto-fill logged-in employee details
   useEffect(() => {
@@ -2595,17 +2704,33 @@ console.log("eligible_leaves:", eligibilityData?.eligible_leaves);
 
   // Add this function at the top level of your component
   const showValidationErrors = (errors) => {
-    const errorList = Object.values(errors)
-      .map((error) => `<li class="text-left">${error}</li>`)
-      .join("");
+    const list = [];
+    const walk = (value) => {
+      if (value == null || value === "") return;
+      if (Array.isArray(value)) {
+        value.forEach(walk);
+        return;
+      }
+      if (typeof value === "object") {
+        Object.entries(value).forEach(([key, item]) => {
+          if (["trace", "exception", "file", "line"].includes(key)) return;
+          walk(item);
+        });
+        return;
+      }
+      const text = String(value);
+      if (text && text !== "undefined") list.push(text);
+    };
+    walk(errors);
+    const errorList = list.map((error) => `<li class="text-left">${error}</li>`).join("");
 
     Swal.fire({
       icon: "error",
-      title: "Limitation exceeded",
+      title: "Cannot submit leave",
       html: `
         <div>
           <ul class="list-disc pl-4 mt-2">
-            ${errorList}
+            ${errorList || "<li>Please check the form and try again.</li>"}
           </ul>
         </div>
       `,
@@ -2844,6 +2969,7 @@ console.log("eligible_leaves:", eligibilityData?.eligible_leaves);
         to: getCurrentDate(),
       },
       reason: "",
+      covering_employee_id: "",
     });
 
     setIsSubmitting(false);

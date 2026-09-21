@@ -37,9 +37,20 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 8 }, (_, i) => currentYear - 2 + i);
 
+export function looksLikeSalaryAdvance(...parts) {
+  const n = parts.map((p) => String(p || "").toLowerCase()).join(" ").trim();
+  if (!n) return false;
+  const compact = n.replace(/[\s_-]+/g, "");
+  if (["advance", "salaryadvance", "advancesalary"].includes(compact)) return true;
+  if (compact.includes("salaryadvance") || compact.includes("advancesalary")) return true;
+  return /\badvance\b/.test(n);
+}
+
 function isSalaryAdvanceItem(item, nameKey, codeKey) {
-  const n = `${item?.[nameKey] || ""} ${item?.[codeKey] || ""}`.toLowerCase();
-  return n.includes("salary advance") || n.includes("salary_advance") || n.trim() === "advance";
+  if (!item) return false;
+  const from = String(item.deduct_from || "").toLowerCase();
+  if (from === "basic" || from === "bonus") return true;
+  return looksLikeSalaryAdvance(item[nameKey], item[codeKey], item.category);
 }
 
 function monthCount(fromMonth, fromYear, toMonth, toYear) {
@@ -536,11 +547,26 @@ function AssignModal({
                   ))}
                 </select>
               </div>
+
+              {salaryAdvance && (
+                <DeductFromRadios
+                  value={deductFrom}
+                  onChange={setDeductFrom}
+                  employeeWise={applyTo === "employee"}
+                />
+              )}
             </>
           )}
 
           {step === 2 && (
             <>
+              {salaryAdvance && (
+                <p className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+                  This assignment will deduct from{" "}
+                  <strong>{deductFrom === "basic" ? "basic salary" : "monthly bonus"}</strong>
+                  . Change it on the previous step if needed.
+                </p>
+              )}
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Mode</label>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -577,35 +603,6 @@ function AssignModal({
                   </button>
                 </div>
               </div>
-
-              {salaryAdvance && (
-                <fieldset className="rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-3">
-                  <legend className="text-sm font-semibold text-slate-800 px-1">
-                    Deduct salary advance from
-                  </legend>
-                  <p className="text-xs text-slate-500 mb-2">
-                    HR only. Payroll will take this amount from monthly bonus or basic salary.
-                  </p>
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <label className="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={deductFrom !== "basic"}
-                        onChange={() => setDeductFrom("bonus")}
-                      />
-                      Monthly bonus (default)
-                    </label>
-                    <label className="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={deductFrom === "basic"}
-                        onChange={() => setDeductFrom("basic")}
-                      />
-                      Basic salary
-                    </label>
-                  </div>
-                </fieldset>
-              )}
 
               {valueType === "fixed" ? (
                 <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50 p-4">
@@ -678,6 +675,13 @@ function AssignModal({
                   <strong>Will create:</strong> {months} month row(s)
                   {applyTo === "all" ? " per employee in company" : ""}
                 </li>
+                {salaryAdvance && (
+                  <li>
+                    <strong>Deduct from:</strong>{" "}
+                    {deductFrom === "basic" ? "Basic salary" : "Monthly bonus"}
+                    {applyTo === "employee" ? " (this employee)" : " (all selected employees)"}
+                  </li>
+                )}
               </ul>
             </div>
           )}
@@ -714,6 +718,39 @@ function AssignModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function DeductFromRadios({ value, onChange, employeeWise }) {
+  return (
+    <fieldset className="rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-3">
+      <legend className="text-sm font-semibold text-slate-800 px-1">
+        Deduct salary advance from
+      </legend>
+      <p className="text-xs text-slate-500 mb-2">
+        {employeeWise
+          ? "This employee only. Payroll will take this assignment from monthly bonus or basic salary."
+          : "Applies to every employee in this assignment. You can assign again per employee with a different choice."}
+      </p>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            checked={value !== "basic"}
+            onChange={() => onChange("bonus")}
+          />
+          Monthly bonus (default)
+        </label>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            checked={value === "basic"}
+            onChange={() => onChange("basic")}
+          />
+          Basic salary
+        </label>
+      </div>
+    </fieldset>
   );
 }
 

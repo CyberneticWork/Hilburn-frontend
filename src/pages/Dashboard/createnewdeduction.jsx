@@ -8,6 +8,7 @@ import {
   updateDeduction,
 } from "@services/DeductionService";
 import { fetchCompanies } from "@services/ApiDataService";
+import { looksLikeSalaryAdvance } from "./EmployeeWiseAllowance";
 import {
   Download,
   Loader2,
@@ -31,11 +32,6 @@ const emptyForm = () => ({
     status: "active",
     deduct_from: "bonus",
 });
-
-function looksLikeSalaryAdvance(name) {
-  const n = String(name || "").toLowerCase();
-  return n.includes("salary advance") || n.includes("salary_advance") || n.trim() === "advance";
-}
 
 export default function CreateNewDeduction() {
   const [rows, setRows] = useState([]);
@@ -144,7 +140,7 @@ export default function CreateNewDeduction() {
       amount: Number(form.amount),
       status: form.status,
     };
-    if (looksLikeSalaryAdvance(form.deduction_name)) {
+    if (looksLikeSalaryAdvance(form.deduction_name, form.deduction_code)) {
       payload.deduct_from = form.deduct_from === "basic" ? "basic" : "bonus";
     }
     if (!editingId) {
@@ -298,6 +294,7 @@ export default function CreateNewDeduction() {
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Department</th>
                 <th className="px-4 py-3">Default amount</th>
+                <th className="px-4 py-3">Deduct from</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -312,6 +309,13 @@ export default function CreateNewDeduction() {
                   <td className="px-4 py-3 tabular-nums text-slate-800">
                     {Number(row.amount || 0).toFixed(2)}
                       </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {looksLikeSalaryAdvance(row.deduction_name, row.deduction_code) || row.deduct_from
+                      ? String(row.deduct_from || "").toLowerCase() === "basic"
+                        ? "Basic salary"
+                        : "Monthly bonus"
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3">
                         <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -347,7 +351,7 @@ export default function CreateNewDeduction() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-14 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-14 text-center text-slate-500">
                     No predefined deductions yet. Click <strong>New Deduction</strong> to start.
                     </td>
                   </tr>
@@ -435,13 +439,13 @@ export default function CreateNewDeduction() {
                     required
                 />
               </Field>
-              {looksLikeSalaryAdvance(form.deduction_name) && (
+              {looksLikeSalaryAdvance(form.deduction_name, form.deduction_code) && (
                 <fieldset className="rounded-xl border border-rose-100 bg-rose-50/60 px-3 py-3">
                   <legend className="text-sm font-semibold text-slate-800 px-1">
                     Deduct salary advance from
                   </legend>
                   <p className="text-xs text-slate-500 mb-2">
-                    HR default for this deduction. Employees cannot choose this.
+                    Default only. Assign Deductions lets you pick Basic or Bonus per employee.
                   </p>
                   <div className="flex flex-wrap gap-4 text-sm">
                     <label className="inline-flex items-center gap-2 cursor-pointer">

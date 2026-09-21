@@ -38,8 +38,8 @@ export const attachLeaveEvidence = (id, file) => {
   return axios.post(`/me/leaves/${id}/evidence`, fd).then((r) => r.data);
 };
 
-export const getCoveringColleagues = () =>
-  axios.get('/me/covering-colleagues').then((r) => r.data);
+export const getCoveringColleagues = (params = {}) =>
+  axios.get('/me/covering-colleagues', { params }).then((r) => r.data);
 
 export const getCoveringLeaves = () =>
   axios.get('/me/covering-leaves').then((r) => r.data);

@@ -56,7 +56,12 @@ axios.interceptors.response.use(
       } else if (status >= 500) {
         err.response.data = { message: "Request failed. Please try again." };
       } else {
-        err.response.data = { ...err.response.data, ...safe, trace: undefined, exception: undefined, file: undefined, line: undefined };
+        const next = { ...err.response.data, ...safe };
+        delete next.trace;
+        delete next.exception;
+        delete next.file;
+        delete next.line;
+        err.response.data = next;
       }
     }
     return Promise.reject(err);

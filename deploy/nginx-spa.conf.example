@@ -1,16 +1,16 @@
-# React SPA (HR frontend) — BDC
+# React SPA (HR frontend) — JC Food / Jay Seafood
 # Direct URLs like /cybernetic-admin and /dashboard must fall through to index.html.
 # Without try_files, nginx returns its own "404 Not Found".
 #
-# bdchrnew.cyberneticde.site = this SPA
-# apibdchrnew.cyberneticde.site = Laravel (see backend deploy/nginx-laravel.conf.example)
-# Never point apibdchrnew at this frontend root or at another tenant.
+# jcfood.cyberneticde.site = this SPA
+# apijcfood.cyberneticde.site = Laravel (see backend deploy/nginx-laravel.conf.example)
+# Never point apijcfood at this frontend root or at another tenant.
 
 server {
     listen 443 ssl http2;
-    server_name bdchrnew.cyberneticde.site;
+    server_name jcfood.cyberneticde.site;
 
-    root /var/www/bdc-frontend/dist;
+    root /var/www/jcfood-frontend/dist;
     index index.html;
 
     location / {
