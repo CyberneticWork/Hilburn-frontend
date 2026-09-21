@@ -135,6 +135,14 @@ const AddressDetails = ({ onNext, onPrevious, activeCategory }) => {
     const [types, setTypes] = useState([]);
     const [editingType, setEditingType] = useState(null);
 
+    const getAuthHeaders = useCallback(() => {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      return {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+    }, []);
+
     const fetchTypes = useCallback(async () => {
       setIsLoading(true);
       try {
