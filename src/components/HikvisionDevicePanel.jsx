@@ -4,7 +4,7 @@ import hikvisionService from "@services/hikvisionService";
 
 const emptyForm = {
   name: "",
-  model: "DS-K1T320MFWX",
+  model: "DS-K1T320EFWX",
   serial_number: "",
   ip_address: "",
   port: 80,
@@ -103,7 +103,7 @@ export default function HikvisionDevicePanel({ companies = [] }) {
             <p><b>Webhook URL:</b></p>
             <code class="block break-all bg-slate-100 p-2 rounded text-xs">${webhook}</code>
             <p class="mt-2">Device IP: <b>${cfg?.device?.ip}:${cfg?.device?.port}</b> · User: <b>${cfg?.device?.username}</b></p>
-            <p class="text-xs text-slate-600">Same method as Solar: copy <code>scripts/hikvision-bridge</code> to an office PC, save .env, run <code>npm start</code> or install-autostart.bat.</p>
+            <p class="text-xs text-slate-600">Copy <code>sohan_hr_system_backend/scripts/hikvision-bridge</code> to an always-on office PC. Save the downloaded file there as <code>.env</code>, then <code>npm install</code> and <code>npm start</code> or <code>install-autostart.bat</code>.</p>
           </div>
         `,
         confirmButtonText: "Download office .env",
@@ -153,8 +153,8 @@ export default function HikvisionDevicePanel({ companies = [] }) {
       {expanded && (
         <div className="p-4 space-y-4">
           <p className="text-sm text-slate-600">
-            Working sync from Solar: LAN <b>Sync Now</b> pulls fingerprint events (major 5 / minor 38+).
-            Cloud ERP uses office <b>hikvision-bridge</b> → Punches URL. Device user ID must match{" "}
+            Working sync: LAN <b>Sync Now</b> pulls fingerprint events (major 5 / minor 38+).
+            Cloud HR uses the office <b>hikvision-bridge</b> → Punches URL. Device user ID must match{" "}
             <strong>Attendance Employee No</strong>.
           </p>
 
@@ -201,7 +201,7 @@ export default function HikvisionDevicePanel({ companies = [] }) {
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-white rounded-lg border">
               {[
                 ["name", "Device name", "text"],
-                ["model", "Model", "text"],
+                ["model", "Model (DS-K1T320EFWX)", "text"],
                 ["serial_number", "Serial (GG4907842)", "text"],
                 ["ip_address", "IP address", "text"],
                 ["port", "Port", "number"],
