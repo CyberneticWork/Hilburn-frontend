@@ -32,6 +32,26 @@ const UserManagementService = {
     const response = await axios.delete(`/users/${id}`);
     return response.data;
   },
+
+  getRoles: async () => {
+    const response = await axios.get("/acl/roles");
+    return Array.isArray(response.data?.roles) ? response.data.roles : [];
+  },
+
+  createRole: async (payload) => {
+    const response = await axios.post("/acl/roles", payload);
+    return response.data;
+  },
+
+  deleteRole: async (id) => {
+    const response = await axios.delete(`/acl/roles/${id}`);
+    return response.data;
+  },
+
+  assignRole: async (userId, role) => {
+    const response = await axios.post("/acl/assign-role", { user_id: userId, role });
+    return response.data;
+  },
 };
 
 export default UserManagementService;

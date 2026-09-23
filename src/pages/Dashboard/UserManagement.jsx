@@ -253,13 +253,13 @@ const UserManagement = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   // Updated roles to match backend structure
-  const roles = [
+  const [roles, setRoles] = useState([
     { id: "admin", name: "Administrator" },
     { id: "supervisor", name: "Supervisor" },
     { id: "hr", name: "HR" },
     { id: "employee", name: "Employee" },
     { id: "user", name: "User" },
-  ];
+  ]);
 
   // Fetch users on component mount
   useEffect(() => {
@@ -270,8 +270,14 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data = await UserManagementService.getAllUsers();
+      const [data, roleRows] = await Promise.all([
+        UserManagementService.getAllUsers(),
+        UserManagementService.getRoles().catch(() => []),
+      ]);
       setUsers(Array.isArray(data) ? data : []);
+      if (Array.isArray(roleRows) && roleRows.length) {
+        setRoles(roleRows.map((r) => ({ id: r.key, name: r.name })));
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
       Swal.fire({
@@ -466,7 +472,7 @@ console.log("Submitting form data:", currentUser, formData);
           </h1>
         </div>
         <p className="text-blue-200 text-center mt-2 text-sm sm:text-base">
-          Manage system users. Admin can allocate ACL to HR, Supervisor, and User accounts.
+          Manage system users. Create a role in Access Control, then assign it here or from ACL → Assign to existing user.
         </p>
       </div>
 
@@ -631,7 +637,7 @@ console.log("Submitting form data:", currentUser, formData);
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
                         <div className="flex justify-center space-x-2">
                           {canAllocateAcl &&
-                            ["hr", "supervisor", "user"].includes(String(user.role || "").toLowerCase()) && (
+                            !["admin", "employee"].includes(String(user.role || "").toLowerCase()) && (
                             <button
                               onClick={() => setAclUser(user)}
                               className="inline-flex items-center gap-1 rounded-lg bg-teal-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-teal-800"
