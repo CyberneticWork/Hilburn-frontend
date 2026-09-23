@@ -86,7 +86,26 @@ export default function UserAclModal({ user, onClose }) {
   const save = async () => {
     setSaving(true);
     try {
-      await axios.put(`/acl/users/${user.id}`, { modules });
+      const payload = {
+        modules: modules.map((row) => ({
+          key: row.key,
+          view: !!row.view,
+          add: !!row.add,
+          edit: !!row.edit,
+          delete: !!row.delete,
+          approve: !!row.approve,
+        })),
+      };
+      try {
+        await axios.post(`/acl/users/${user.id}`, payload);
+      } catch (first) {
+        const status = first?.response?.status;
+        if (status === 404 || status === 405) {
+          await axios.put(`/acl/users/${user.id}`, payload);
+        } else {
+          throw first;
+        }
+      }
       Swal.fire({
         icon: "success",
         title: "ACL saved",
@@ -99,7 +118,7 @@ export default function UserAclModal({ user, onClose }) {
       Swal.fire({
         icon: "error",
         title: "Save failed",
-        text: err?.response?.data?.message || err.message,
+        text: err?.response?.data?.message || err.message || "Request failed. Please try again.",
       });
     } finally {
       setSaving(false);
