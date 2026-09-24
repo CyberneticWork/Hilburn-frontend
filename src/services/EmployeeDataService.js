@@ -233,6 +233,30 @@ const employeeService = {
       throw error;
     }
   },
+
+  async downloadMasterTemplate() {
+    const response = await axios.get("/employees/template", { responseType: "blob" });
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "employee_master_import.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  async importMasterExcel(file) {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await axios.post("/employees/import-excel", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
 };
 
 export default employeeService;

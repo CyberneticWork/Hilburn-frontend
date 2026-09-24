@@ -161,7 +161,7 @@ import MidShiftBreaks from "@dashboard/MidShiftBreaks";
 import SupervisorLeaveApproval from "@dashboard/SupervisorLeaveApproval";
 
 import { useLocation, useNavigate } from "react-router-dom";
-import { isEmployeeUser } from "../../services/UserService";
+import { isEmployeeUser, enterEmployeePortal } from "../../services/UserService";
 import {
   sidebarUtils,
   toggleSidebar,
@@ -1351,7 +1351,8 @@ const Dashboard = ({ user, onLogout }) => {
         );
 
       case "employeePortal":
-        window.location.href = "/employee-portal";
+        enterEmployeePortal();
+        navigate("/employee-portal");
         return null;
 
       case "salaryRecords":

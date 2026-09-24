@@ -205,6 +205,34 @@ const UserFormModal = ({
                 <p className="mt-1 text-sm text-red-500">{errors.role}</p>
               )}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Link employee master
+              </label>
+              <input
+                type="text"
+                name="employee_link"
+                value={formData.employee_link || ""}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border ${
+                  errors.employee_link ? "border-red-500" : "border-gray-300"
+                } rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                placeholder="Attendance no, EPF or NIC"
+              />
+              {errors.employee_link && (
+                <p className="mt-1 text-sm text-red-500">
+                  {Array.isArray(errors.employee_link)
+                    ? errors.employee_link[0]
+                    : errors.employee_link}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                One password. Keep this person on their HR/manager role for ACL,
+                and link their employee record so they can open My salary & leave
+                like any other staff member.
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end space-x-3">
@@ -249,6 +277,7 @@ const UserManagement = () => {
     password: "",
     password_confirmation: "",
     role: "user",
+    employee_link: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -384,6 +413,7 @@ console.log("Submitting form data:", currentUser, formData);
       role: user.role || "user",
       password: "",
       password_confirmation: "",
+      employee_link: user.employee?.attendance_employee_no || "",
     });
     setShowEditModal(true);
     setErrors({});
@@ -433,6 +463,7 @@ console.log("Submitting form data:", currentUser, formData);
       password: "",
       password_confirmation: "",
       role: "user",
+      employee_link: "",
     });
     setCurrentUser(null);
     setErrors({});
@@ -472,7 +503,9 @@ console.log("Submitting form data:", currentUser, formData);
           </h1>
         </div>
         <p className="text-blue-200 text-center mt-2 text-sm sm:text-base">
-          Manage system users. Create a role in Access Control, then assign it here or from ACL → Assign to existing user.
+          One login, one password. Assign an HR/manager role for ACL, then link
+          the same person to Employee Master so they can also check their own
+          salary and leave.
         </p>
       </div>
 
@@ -612,6 +645,14 @@ console.log("Submitting form data:", currentUser, formData);
                             user.role ||
                             "User"}
                         </span>
+                        {user.employee_id ? (
+                          <div className="mt-1 text-[11px] text-teal-700">
+                            Own pay/leave
+                            {user.employee?.attendance_employee_no
+                              ? ` · #${user.employee.attendance_employee_no}`
+                              : ""}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

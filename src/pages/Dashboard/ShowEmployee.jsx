@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   Eye,
   User,
@@ -21,19 +21,23 @@ import {
   Edit,
   Download,
   FileText,
+  Upload,
 } from "lucide-react";
 import { useDebounce } from "@uidotdev/usehooks";
-import { useNavigate } from "react-router-dom";
 import employeeService from "@services/EmployeeDataService";
 import { exportEmployeeReportCSV, exportEmployeeReportPDF } from "@utils/employeeReportExport";
 import config from "../../config";
 import { mediaUrl } from "../../utils/mediaUrl";
 import Swal from "sweetalert2";
+import useAcl from "../../hooks/useAcl";
 
 const apiUrl = config.apiBaseUrl;
 
 const ShowEmployee = () => {
-  const navigate = useNavigate();
+  const showAcl = useAcl("show");
+  const masterAcl = useAcl("employeeMaster");
+  const canEditEmployee = showAcl.canEdit || masterAcl.canEdit;
+  const canDeleteEmployee = masterAcl.canDelete || showAcl.canDelete;
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -78,6 +82,12 @@ const ShowEmployee = () => {
     setShowModal(true);
     setDeleteError(null);
     setDeleteSuccess(false);
+  };
+
+  const handleEditEmployee = (employeeId) => {
+    if (!canEditEmployee || !employeeId) return;
+    localStorage.setItem("editEmployeeId", String(employeeId));
+    window.dispatchEvent(new CustomEvent("hr:navigate", { detail: "employeeMaster" }));
   };
 
   const closeModal = () => {
@@ -187,6 +197,8 @@ const ShowEmployee = () => {
   };
 
   const [reportLoading, setReportLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const excelInputRef = useRef(null);
 
   const runEmployeeReportExport = async (type, { employeeId = null, activeOnly = false } = {}) => {
     setReportLoading(true);
@@ -207,6 +219,49 @@ const ShowEmployee = () => {
       Swal.fire({ icon: "error", title: "Export Failed", text: err.response?.data?.message || err.message || "Could not generate report." });
     } finally {
       setReportLoading(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await employeeService.downloadMasterTemplate();
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Download failed",
+        text: err.response?.data?.message || err.message || "Could not download the Excel template.",
+      });
+    }
+  };
+
+  const handleExcelSelected = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const result = await employeeService.importMasterExcel(file);
+      const failed = (result.details || []).filter((row) => row.status === "failed");
+      await Swal.fire({
+        icon: result.failed ? "warning" : "success",
+        title: "Excel import finished",
+        html: `<p>${result.message || ""}</p>${
+          failed.length
+            ? `<pre class="text-left text-xs mt-2 max-h-40 overflow-auto">${failed
+                .map((row) => `${row.name}: ${row.reason}`)
+                .join("\n")}</pre>`
+            : ""
+        }`,
+      });
+      loadData();
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Import failed",
+        text: err.response?.data?.message || err.message || "Could not import the Excel file.",
+      });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -257,6 +312,26 @@ const ShowEmployee = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full md:w-auto">
+              <input
+                ref={excelInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleExcelSelected}
+              />
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800"
+              >
+                <Download size={16} /> Excel template
+              </button>
+              <button
+                onClick={() => excelInputRef.current?.click()}
+                disabled={importing}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-60"
+              >
+                <Upload size={16} /> {importing ? "Uploading…" : "Upload Excel"}
+              </button>
               <button
                 onClick={handleExportAllCSV}
                 disabled={reportLoading}
@@ -434,13 +509,33 @@ const ShowEmployee = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => handleViewEmployee(employee.id)}
-                            className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleViewEmployee(employee.id)}
+                              className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEditEmployee(employee.id)}
+                              disabled={!canEditEmployee}
+                              title={
+                                canEditEmployee
+                                  ? "Edit this employee"
+                                  : "You do not have permission to edit employees"
+                              }
+                              className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                                canEditEmployee
+                                  ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                              }`}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1014,11 +1109,30 @@ const ShowEmployee = () => {
               {/* Modal Footer */}
               <div className="bg-gray-50 px-6 py-4 rounded-b-2xl">
                 <div className="flex justify-end space-x-4">
+                  {canDeleteEmployee ? (
+                    <button
+                      onClick={handleDeleteClick}
+                      className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors duration-200"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                    </button>
+                  ) : null}
                   <button
-                    onClick={handleDeleteClick}
-                    className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors duration-200"
+                    type="button"
+                    onClick={() => handleEditEmployee(selectedEmployee.id)}
+                    disabled={!canEditEmployee}
+                    title={
+                      canEditEmployee
+                        ? "Edit this employee"
+                        : "You do not have permission to edit employees"
+                    }
+                    className={`flex items-center px-4 py-2 font-medium rounded-lg transition-colors duration-200 ${
+                      canEditEmployee
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    }`}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                    <Edit className="h-4 w-4 mr-2" /> Edit
                   </button>
                   <button
                     onClick={closeModal}

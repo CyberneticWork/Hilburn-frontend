@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import EmpPersonalDetails from "@dashboard/AddEmployeeMaster/EmpPersonalDetails";
 import AddressDetails from "@dashboard/AddEmployeeMaster/AddressDetails";
 import OrganizationDetails from "@dashboard/AddEmployeeMaster/OrganizationDetails";
@@ -11,6 +11,7 @@ import {
 } from "@contexts/EmployeeFormContext";
 import employeeService from "@services/EmployeeDataService";
 import Swal from "sweetalert2";
+import { Download, Upload } from "lucide-react";
 
 const steps = [
   "personal",
@@ -34,6 +35,8 @@ const EmployeeMaster = () => {
   const currentStepIndex = steps.indexOf(activeCategory);
   const { setFormErrors, setIsSubmitting, clearForm, loadEmployeeData } =
     useEmployeeForm();
+  const excelInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
 
   // Load employee data if editing
   useEffect(() => {
@@ -51,6 +54,48 @@ const EmployeeMaster = () => {
       fetchEmployee();
     }
   }, [loadEmployeeData]);
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await employeeService.downloadMasterTemplate();
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Download failed",
+        text: err.response?.data?.message || err.message || "Could not download the Excel template.",
+      });
+    }
+  };
+
+  const handleExcelSelected = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    try {
+      const result = await employeeService.importMasterExcel(file);
+      const failed = (result.details || []).filter((row) => row.status === "failed");
+      await Swal.fire({
+        icon: result.failed ? "warning" : "success",
+        title: "Excel import finished",
+        html: `<p>${result.message || ""}</p>${
+          failed.length
+            ? `<pre class="text-left text-xs mt-2 max-h-40 overflow-auto">${failed
+                .map((row) => `${row.name}: ${row.reason}`)
+                .join("\n")}</pre>`
+            : ""
+        }`,
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Import failed",
+        text: err.response?.data?.message || err.message || "Could not import the Excel file.",
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const goNext = () => {
     if (currentStepIndex < steps.length - 1) {
@@ -148,8 +193,36 @@ const EmployeeMaster = () => {
   return (
     <div>
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg shadow-lg mb-6 mx-4 mt-4">
-        <h1 className="text-3xl font-bold mb-2">Employee Master</h1>
-        <p className="text-blue-100">Complete employee information management system</p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Employee Master</h1>
+            <p className="text-blue-100">Complete employee information management system</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={excelInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleExcelSelected}
+            />
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold text-white hover:bg-white/25"
+            >
+              <Download size={16} /> Excel template
+            </button>
+            <button
+              type="button"
+              onClick={() => excelInputRef.current?.click()}
+              disabled={importing}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
+            >
+              <Upload size={16} /> {importing ? "Uploading…" : "Upload Excel"}
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex gap-2 px-4 py-2 border-b border-gray-200 bg-white items-center justify-between">
         <div className="flex gap-2">

@@ -1,9 +1,43 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { loadUser } from "../services/AuthService";
-import { permissions } from "../config/permissions"; // Or fetch from API
+import { permissions } from "../config/permissions";
 import { getToken } from "../services/TokenService";
 
 const AuthContext = createContext();
+
+const MODULE_ALIASES = {
+  employeemaster: ["show"],
+  show: ["employeemaster"],
+};
+
+function isFullAccessUser(user) {
+  const role = String(user?.role || "").toLowerCase();
+  return role === "admin" || role === "super_admin" || !!user?.is_super_admin;
+}
+
+function actionGranted(block, action) {
+  if (!block || typeof block !== "object") return false;
+  if (block[action] || block[`can_${action}`]) return true;
+  if (action === "edit" && (block.update || block.add || block.can_edit || block.can_add)) return true;
+  if (action === "add" && (block.create || block.edit || block.can_add || block.can_edit)) return true;
+  if (
+    action === "view" &&
+    (block.edit || block.add || block.update || block.approve || block.delete ||
+      block.can_edit || block.can_add || block.can_approve || block.can_delete)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function permMap(source) {
+  const out = {};
+  if (!source || typeof source !== "object") return out;
+  for (const [key, value] of Object.entries(source)) {
+    out[String(key).toLowerCase()] = value && typeof value === "object" ? value : {};
+  }
+  return out;
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -26,7 +60,6 @@ export const AuthProvider = ({ children }) => {
     fetchUser();
   }, []);
 
-  // Keep permissions in sync if user's role changes (e.g., after re-login)
   useEffect(() => {
     if (user && user.permissions) {
       setUserPermissions(user.permissions);
@@ -37,29 +70,26 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Allow app code to push a new user into context after login/register
   const setAuthUser = (newUser) => {
     setUser(newUser);
     const role = newUser?.role;
     setUserPermissions(newUser?.permissions || (role ? permissions[role] || {} : {}));
   };
 
-  // Clear auth state on logout
   const clearAuth = () => {
     setUser(null);
     setUserPermissions({});
   };
 
-  const hasPermission = (module, action) => {
-    if (String(user?.role || "").toLowerCase() === "admin" || user?.is_super_admin) {
-      return true;
-    }
-    const block = userPermissions[module] || {};
-    if (block[action]) return true;
-    if (action === "edit" && (block.update || block.add)) return true;
-    if (action === "add" && (block.create || block.edit)) return true;
-    return false;
-  };
+  const hasPermission = useMemo(() => {
+    const map = permMap(userPermissions);
+    return (module, action) => {
+      if (isFullAccessUser(user)) return true;
+      const key = String(module || "").toLowerCase();
+      const keys = [key, ...(MODULE_ALIASES[key] || [])];
+      return keys.some((k) => actionGranted(map[k], action));
+    };
+  }, [user, userPermissions]);
 
   return (
     <AuthContext.Provider

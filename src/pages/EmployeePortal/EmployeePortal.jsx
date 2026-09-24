@@ -14,6 +14,7 @@ import {
   Download,
   FileText,
   Landmark,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   attachLeaveEvidence,
@@ -35,7 +36,7 @@ import {
   submitResignation,
 } from "../../services/EmployeePortalService";
 import { logout } from "../../services/AuthService";
-import { clearUser, getUser, isEmployeeUser } from "../../services/UserService";
+import { clearUser, getUser, canUseEmployeePortal, canUseHrDesk, enterEmployeePortal, enterHrDesk } from "../../services/UserService";
 import NotificationBell from "../../components/NotificationBell";
 import NotificationService from "../../services/NotificationService";
 import { downloadPayslip, downloadPayslips } from "../../utils/payslipPdf";
@@ -263,9 +264,12 @@ export default function EmployeePortal() {
       return;
     }
     const current = getUser();
-    if (current && !isEmployeeUser(current)) {
-      navigate("/dashboard", { replace: true });
+    if (current && !canUseEmployeePortal(current)) {
+      navigate(canUseHrDesk(current) ? "/dashboard" : "/", { replace: true });
       return;
+    }
+    if (current && canUseEmployeePortal(current)) {
+      enterEmployeePortal();
     }
     loadHome();
     loadPunch();
@@ -730,6 +734,18 @@ export default function EmployeePortal() {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell variant="light" />
+            {canUseHrDesk(getUser()) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  enterHrDesk();
+                  navigate("/dashboard", { replace: true });
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" /> HR desk
+              </button>
+            ) : null}
             <button type="button" onClick={handleLogout} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20">
               <LogOut className="w-3.5 h-3.5" /> Sign out
             </button>

@@ -17,6 +17,7 @@ const emptyUserForm = {
   password: "",
   password_confirmation: "",
   role: "hr",
+  employee_link: "",
 };
 
 export default function AccessControl() {
@@ -241,7 +242,8 @@ export default function AccessControl() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
             Create a role, assign it to an existing login, then tick which screens that person can use.
-            Access Control stays with Admin / Super Admin.
+            Do not create a second employee password for HR or managers — link their employee master
+            so they can open My salary & leave from the same login.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -386,7 +388,12 @@ export default function AccessControl() {
                 <tr key={row.id} className="border-t">
                   <td className="px-5 py-3 font-medium text-slate-900">{row.name}</td>
                   <td className="px-5 py-3 text-slate-600">{row.email}</td>
-                  <td className="px-5 py-3 text-slate-700">{roleLabel(row.role)}</td>
+                  <td className="px-5 py-3 text-slate-700">
+                    {roleLabel(row.role)}
+                    {row.employee_id ? (
+                      <div className="text-[11px] font-medium text-teal-700">Own pay/leave</div>
+                    ) : null}
+                  </td>
                   <td className="px-5 py-3 text-right">
                     <button
                       type="button"
@@ -614,6 +621,27 @@ export default function AccessControl() {
                   </select>
                 </div>
                 {errors.role && <p className="mt-1 text-sm text-red-500">{Array.isArray(errors.role) ? errors.role[0] : errors.role}</p>}
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Link employee master (optional)
+                </label>
+                <input
+                  type="text"
+                  name="employee_link"
+                  value={formData.employee_link || ""}
+                  onChange={handleChange}
+                  className={`w-full rounded-lg border px-3 py-2 ${errors.employee_link ? "border-red-500" : "border-gray-300"}`}
+                  placeholder="Attendance no, EPF or NIC"
+                />
+                {errors.employee_link && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {Array.isArray(errors.employee_link) ? errors.employee_link[0] : errors.employee_link}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Same password. They keep this role for ACL and can also open their own salary and leave.
+                </p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowAdd(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">

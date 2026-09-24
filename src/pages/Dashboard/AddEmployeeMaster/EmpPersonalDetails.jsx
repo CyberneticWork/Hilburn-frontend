@@ -17,8 +17,8 @@ import FieldError from "@components/ErrorMessage/FieldError";
 import { useDebounce } from "@uidotdev/usehooks";
 import employeeService from "@services/EmployeeDataService";
 import { mediaUrl } from "../../../utils/mediaUrl";
-import { getUser } from "@services/UserService";
 import DatePickerInput from "../../../components/DatePickerInput";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const relationshipOptions = [
   { value: "", label: "Select Relationship Type" },
@@ -448,7 +448,11 @@ const EmpPersonalDetails = ({ onNext }) => {
     }
   };
 
-  const [user, _setUser] = useState(getUser());
+  const { hasPermission } = useAuth() || {};
+  const canEditEmployee = typeof hasPermission === "function" && hasPermission("employeeMaster", "edit");
+  const canOpenEmployeeMaster = typeof hasPermission === "function" && (
+    hasPermission("employeeMaster", "view") || canEditEmployee
+  );
 
   return (
     <div className="rounded-2xl overflow-hidden">
@@ -467,10 +471,21 @@ const EmpPersonalDetails = ({ onNext }) => {
               </p>
             </div>
           </div>
-          {user.role == "admin" && (
+          {canOpenEmployeeMaster && (
             <button
-              onClick={() => setIsSearchModalOpen(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              type="button"
+              onClick={() => canEditEmployee && setIsSearchModalOpen(true)}
+              disabled={!canEditEmployee}
+              title={
+                canEditEmployee
+                  ? "Search and load an employee to edit"
+                  : "You do not have permission to edit employees"
+              }
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                canEditEmployee
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
+              }`}
             >
               <Edit className="w-4 h-4" />
               <span>Edit Employee</span>

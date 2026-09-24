@@ -18,10 +18,12 @@ import {
   Key,
   Briefcase,
   Shield,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBranding } from "../../contexts/BrandingContext";
-import { isEmployeeUser } from "../../services/UserService";
+import { isEmployeeUser, canUseHrDesk, canUseEmployeePortal, enterEmployeePortal } from "../../services/UserService";
+import { useNavigate } from "react-router-dom";
 import config from "@src/config";
 import { mediaUrl } from "../../utils/mediaUrl";
 import { fetchCompanies } from "../../services/ApiDataService";
@@ -39,8 +41,10 @@ const Sidebar = ({
   const authContext = useAuth() || {};
   const hasPermission = authContext.hasPermission || (() => true);
   const { branding } = useBranding();
+  const navigate = useNavigate();
   const [companyLogo, setCompanyLogo] = useState(branding?.logo_url || "");
   const [companyName, setCompanyName] = useState(branding?.name || "");
+  const showOwnPayLeave = canUseHrDesk(user) && canUseEmployeePortal(user);
 
   useEffect(() => {
     if (branding?.logo_url) setCompanyLogo(branding.logo_url);
@@ -431,7 +435,20 @@ const Sidebar = ({
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-2">
+          {showOwnPayLeave ? (
+            <button
+              type="button"
+              onClick={() => {
+                enterEmployeePortal();
+                navigate("/employee-portal");
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-teal-100 hover:bg-white/10 rounded-xl transition-colors"
+            >
+              <Wallet className="h-4 w-4" />
+              <span>My salary & leave</span>
+            </button>
+          ) : null}
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-coral-200 hover:bg-red-500/15 rounded-xl transition-colors"
