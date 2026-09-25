@@ -86,6 +86,74 @@ export default function HikvisionDevicePanel({ companies = [] }) {
     }
   };
 
+  const toDateInput = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const syncWithDateRange = async (deviceId) => {
+    const today = toDateInput(new Date());
+    const weekAgo = toDateInput(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    const monthAgo = toDateInput(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+
+    const result = await Swal.fire({
+      title: "Sync attendance range",
+      width: 440,
+      html: `
+        <div class="text-left space-y-3 px-1">
+          <p class="text-sm text-slate-600">Pull fingerprint punches from the device for the dates below (missed days after offline PC).</p>
+          <div>
+            <label for="hv-sync-from" class="block text-xs font-semibold text-slate-600 mb-1">From</label>
+            <input id="hv-sync-from" type="date" class="swal2-input m-0 w-full" value="${weekAgo}" max="${today}" />
+          </div>
+          <div>
+            <label for="hv-sync-to" class="block text-xs font-semibold text-slate-600 mb-1">To</label>
+            <input id="hv-sync-to" type="date" class="swal2-input m-0 w-full" value="${today}" max="${today}" />
+          </div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button type="button" id="hv-preset-7" class="px-2 py-1 text-xs rounded bg-slate-100 text-slate-800">Last 7 days</button>
+            <button type="button" id="hv-preset-30" class="px-2 py-1 text-xs rounded bg-slate-100 text-slate-800">Last 30 days</button>
+          </div>
+          <p class="text-xs text-slate-500">Max about 30 days per sync. Duplicates are skipped safely.</p>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "Sync Now",
+      cancelButtonText: "Cancel",
+      didOpen: () => {
+        const fromEl = document.getElementById("hv-sync-from");
+        const toEl = document.getElementById("hv-sync-to");
+        document.getElementById("hv-preset-7")?.addEventListener("click", () => {
+          if (fromEl) fromEl.value = weekAgo;
+          if (toEl) toEl.value = today;
+        });
+        document.getElementById("hv-preset-30")?.addEventListener("click", () => {
+          if (fromEl) fromEl.value = monthAgo;
+          if (toEl) toEl.value = today;
+        });
+      },
+      preConfirm: () => {
+        const from_date = document.getElementById("hv-sync-from")?.value;
+        const to_date = document.getElementById("hv-sync-to")?.value;
+        if (!from_date || !to_date) {
+          Swal.showValidationMessage("Both From and To dates are required");
+          return false;
+        }
+        if (from_date > to_date) {
+          Swal.showValidationMessage("From date must be on or before To date");
+          return false;
+        }
+        return { from_date, to_date };
+      },
+    });
+
+    if (!result.isConfirmed || !result.value) return;
+    await runAction("Sync", () => hikvisionService.syncNow(deviceId, result.value));
+  };
+
   const showAgentConfig = async (deviceId) => {
     try {
       const cfg = await hikvisionService.getAgentConfig(deviceId);
@@ -153,7 +221,7 @@ export default function HikvisionDevicePanel({ companies = [] }) {
       {expanded && (
         <div className="p-4 space-y-4">
           <p className="text-sm text-slate-600">
-            Working sync: LAN <b>Sync Now</b> pulls fingerprint events (major 5 / minor 38+).
+            Working sync: LAN <b>Sync Now</b> opens a date picker to pull fingerprint events (default last 7 days; up to ~30 days for offline catch-up).
             Cloud HR uses the office <b>hikvision-bridge</b> → Punches URL. Device user ID must match{" "}
             <strong>Attendance Employee No</strong>.
           </p>
@@ -282,7 +350,7 @@ export default function HikvisionDevicePanel({ companies = [] }) {
                 <button
                   type="button"
                   className="px-2 py-1 text-xs bg-emerald-100 text-emerald-800 rounded"
-                  onClick={() => runAction("Sync", () => hikvisionService.syncNow(d.id))}
+                  onClick={() => syncWithDateRange(d.id)}
                 >
                   Sync Now
                 </button>
