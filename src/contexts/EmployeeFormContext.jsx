@@ -403,7 +403,17 @@ export const EmployeeFormProvider = ({ children }) => {
         resignationApproved: false,
         currentStatus: org.is_active ? 1 : 0,
         dayOff: org.day_off || "",
-        employeeCategory: employeeData.compensation?.employee_category || "Non-Executive",
+        employeeCategory: (() => {
+          const raw = String(employeeData.compensation?.employee_category || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[_/]+/g, " ")
+            .replace(/\s+/g, " ");
+          if (!raw) return "Non-Executive";
+          if (raw.includes("non") && raw.includes("executive")) return "Non-Executive";
+          if (raw.includes("executive")) return "Executive";
+          return "Non-Executive";
+        })(),
       },
       documents: [],
     });

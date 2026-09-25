@@ -291,6 +291,18 @@ const EmpPersonalDetails = ({ onNext }) => {
         return status;
       };
 
+      const normalizeEmployeeCategory = (value) => {
+        const raw = String(value || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[_/]+/g, " ")
+          .replace(/\s+/g, " ");
+        if (!raw) return "Non-Executive";
+        if (raw.includes("non") && raw.includes("executive")) return "Non-Executive";
+        if (raw.includes("executive")) return "Executive";
+        return "Non-Executive";
+      };
+
       // Fix: Get relationship type from spouse.type
       const relationshipType = apiData.spouse?.type || "";
 
@@ -390,20 +402,34 @@ const EmpPersonalDetails = ({ onNext }) => {
           stamp: apiData.compensation?.stamp === 1,
         },
         organization: {
-          company: apiData.organization_assignment?.company?.id?.toString(),
-          department:
-            apiData.organization_assignment?.department?.id?.toString(),
-          subDepartment:
-            apiData.organization_assignment?.sub_department?.id?.toString(),
+          company: apiData.organization_assignment?.company?.id != null
+            ? String(apiData.organization_assignment.company.id)
+            : apiData.organization_assignment?.company_id != null
+              ? String(apiData.organization_assignment.company_id)
+              : "",
+          department: apiData.organization_assignment?.department?.id != null
+            ? String(apiData.organization_assignment.department.id)
+            : apiData.organization_assignment?.department_id != null
+              ? String(apiData.organization_assignment.department_id)
+              : "",
+          subDepartment: apiData.organization_assignment?.sub_department?.id != null
+            ? String(apiData.organization_assignment.sub_department.id)
+            : apiData.organization_assignment?.sub_department_id != null
+              ? String(apiData.organization_assignment.sub_department_id)
+              : "",
           companyName: apiData.organization_assignment?.company?.name,
+          companyCode: apiData.organization_assignment?.company?.company_code || "",
           departmentName: apiData.organization_assignment?.department?.name,
           subDepartmentName:
             apiData.organization_assignment?.sub_department?.name,
           currentSupervisor:
             apiData.organization_assignment?.current_supervisor,
           dateOfJoined: apiData.organization_assignment?.date_of_joining,
-          designation:
-            apiData.organization_assignment?.designation?.id?.toString(),
+          designation: apiData.organization_assignment?.designation?.id != null
+            ? String(apiData.organization_assignment.designation.id)
+            : apiData.organization_assignment?.designation_id != null
+              ? String(apiData.organization_assignment.designation_id)
+              : "",
           designationName: apiData.organization_assignment?.designation?.name,
           probationPeriod:
             apiData.organization_assignment?.probationary_period === 1,
@@ -424,7 +450,10 @@ const EmpPersonalDetails = ({ onNext }) => {
           resignationApproved:
             apiData.organization_assignment?.resignation_approved === 1,
           currentStatus: apiData.is_active ? 1 : 0,
-          dayOff: apiData.organization_assignment?.day_off,
+          dayOff: apiData.organization_assignment?.day_off || "",
+          employeeCategory: normalizeEmployeeCategory(
+            apiData.compensation?.employee_category
+          ),
         },
         documents:
           apiData.documents?.map((doc) => ({
