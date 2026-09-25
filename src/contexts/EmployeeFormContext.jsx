@@ -119,6 +119,7 @@ const initialState = {
     resignationApproved: false,
     currentStatus: 1,
     dayOff: "",
+    employeeCategory: "Non-Executive",
   },
   documents: [],
 };
@@ -270,13 +271,19 @@ export const EmployeeFormProvider = ({ children }) => {
   }, []);
 
   const loadEmployeeData = useCallback((employeeData) => {
-    console.log('Loading employee data:', employeeData);
-    console.log('Children data:', employeeData.children);
-    
-    // Dispatch event to trigger department loading
-    if (employeeData.organization_assignment?.company_id) {
+    const org =
+      employeeData.organization_assignment ||
+      employeeData.organizationAssignment ||
+      {};
+    const companyId = org.company_id ?? org.company?.id ?? "";
+    const departmentId = org.department_id ?? org.department?.id ?? "";
+    const subDepartmentId = org.sub_department_id ?? org.sub_department?.id ?? "";
+    const designationId = org.designation_id ?? org.designation?.id ?? "";
+
+    // Trigger department loading for the employee's real company
+    if (companyId) {
       window.dispatchEvent(new CustomEvent('loadDepartments', {
-        detail: { companyId: employeeData.organization_assignment.company_id }
+        detail: { companyId }
       }));
     }
     
@@ -369,32 +376,34 @@ export const EmployeeFormProvider = ({ children }) => {
         stamp: employeeData.compensation?.stamp || false,
       },
       organization: {
-        company: employeeData.organization_assignment?.company_id || "",
-        department: employeeData.organization_assignment?.department_id || "",
-        subDepartment: employeeData.organization_assignment?.sub_department_id || "",
-        companyName: employeeData.organization_assignment?.company?.name || "",
-        companyCode: employeeData.organization_assignment?.company?.company_code || "",
-        departmentName: employeeData.organization_assignment?.department?.name || "",
-        subDepartmentName: employeeData.organization_assignment?.sub_department?.name || "",
-        currentSupervisor: employeeData.organization_assignment?.current_supervisor || "",
-        dateOfJoined: employeeData.organization_assignment?.date_of_joining || "",
-        designation: employeeData.organization_assignment?.designation?.name || "",
-        designationName: employeeData.organization_assignment?.designation?.name || "",
-        probationPeriod: employeeData.organization_assignment?.probationary_period || false,
-        trainingPeriod: employeeData.organization_assignment?.training_period || false,
-        contractPeriod: employeeData.organization_assignment?.contract_period || false,
-        probationFrom: employeeData.organization_assignment?.probationary_period_from || "",
-        probationTo: employeeData.organization_assignment?.probationary_period_to || "",
-        trainingFrom: employeeData.organization_assignment?.training_period_from || "",
-        trainingTo: employeeData.organization_assignment?.training_period_to || "",
-        contractFrom: employeeData.organization_assignment?.contract_period_from || "",
-        contractTo: employeeData.organization_assignment?.contract_period_to || "",
-        confirmationDate: employeeData.organization_assignment?.confirmation_date || "",
-        resignationDate: employeeData.organization_assignment?.date_of_resigning || "",
+        // Selects use id values — never put designation name in the designation field
+        company: companyId === "" || companyId == null ? "" : String(companyId),
+        department: departmentId === "" || departmentId == null ? "" : String(departmentId),
+        subDepartment: subDepartmentId === "" || subDepartmentId == null ? "" : String(subDepartmentId),
+        companyName: org.company?.name || "",
+        companyCode: org.company?.company_code || "",
+        departmentName: org.department?.name || "",
+        subDepartmentName: org.sub_department?.name || "",
+        currentSupervisor: org.current_supervisor || "",
+        dateOfJoined: org.date_of_joining || "",
+        designation: designationId === "" || designationId == null ? "" : String(designationId),
+        designationName: org.designation?.name || "",
+        probationPeriod: !!org.probationary_period,
+        trainingPeriod: !!org.training_period,
+        contractPeriod: !!org.contract_period,
+        probationFrom: org.probationary_period_from || "",
+        probationTo: org.probationary_period_to || "",
+        trainingFrom: org.training_period_from || "",
+        trainingTo: org.training_period_to || "",
+        contractFrom: org.contract_period_from || "",
+        contractTo: org.contract_period_to || "",
+        confirmationDate: org.confirmation_date || "",
+        resignationDate: org.date_of_resigning || "",
         resignationLetter: null,
         resignationApproved: false,
-        currentStatus: employeeData.organization_assignment?.is_active ? 1 : 0,
-        dayOff: employeeData.organization_assignment?.day_off || "",
+        currentStatus: org.is_active ? 1 : 0,
+        dayOff: org.day_off || "",
+        employeeCategory: employeeData.compensation?.employee_category || "Non-Executive",
       },
       documents: [],
     });

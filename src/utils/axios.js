@@ -41,7 +41,20 @@ axios.interceptors.request.use((req) => {
 });
 
 axios.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    const ct = String(res.headers?.["content-type"] || "");
+    if (
+      typeof res.data === "string" &&
+      (ct.includes("text/html") || /^\s*<!DOCTYPE html/i.test(res.data) || /^\s*<html/i.test(res.data))
+    ) {
+      return Promise.reject(
+        Object.assign(new Error("API returned an HTML page instead of JSON."), {
+          response: { status: 502, data: { message: "API host is not routing Laravel /api. Use /index.php/api/... or enable FrontController." } },
+        })
+      );
+    }
+    return res;
+  },
   (err) => {
     const status = err?.response?.status;
     if (status === 401) {
@@ -54,7 +67,20 @@ axios.interceptors.response.use(
       if (status === 422 && err.response.data.errors && urlIsLogin(err)) {
         err.response.data = { message: "The provided credentials are incorrect." };
       } else if (status >= 500) {
-        err.response.data = { message: "Request failed. Please try again." };
+        // Keep backend error text for employee save so HR sees the real cause
+        // (unique login, missing fields, etc.) instead of a generic wipe.
+        if (urlIsEmployeeWrite(err)) {
+          const next = {
+            message:
+              err.response.data.error ||
+              err.response.data.message ||
+              "Request failed. Please try again.",
+          };
+          if (err.response.data.error) next.error = err.response.data.error;
+          err.response.data = next;
+        } else {
+          err.response.data = { message: "Request failed. Please try again." };
+        }
       } else {
         const next = { ...err.response.data, ...safe };
         delete next.trace;
@@ -74,12 +100,26 @@ function urlIsLogin(err) {
   return url.includes("/login") || url.includes("/send-otp") || lr.includes("/login") || lr.includes("/send-otp");
 }
 
+function urlIsEmployeeWrite(err) {
+  const url = String(err?.config?.url || "");
+  const lr = String(err?.config?.params?.__lr || "");
+  const method = String(err?.config?.method || "").toLowerCase();
+  const path = `${url} ${lr}`;
+  const isEmployees =
+    path.includes("/employees") ||
+    path.includes("/employes");
+  return isEmployees && (method === "post" || method === "put" || method === "patch");
+}
+
 /** Hosts that only execute *.php need /index.php?__lr=/api/... instead of /index.php/api/... */
 function rewriteIndexPhpFrontController(req) {
   const base = String(req.baseURL || "");
   const marker = "/index.php";
   const at = base.toLowerCase().indexOf(marker);
   if (at === -1) return;
+  // Urban nginx already runs /index.php/api/... PATH_INFO. __lr is ignored there and
+  // returns the Laravel welcome HTML, so Cybernetic Admin shows an empty company list.
+  if (/urbanhr/i.test(base)) return;
 
   const currentUrl = String(req.url || "");
   if (currentUrl === "/index.php" && req.params && req.params.__lr) return;
