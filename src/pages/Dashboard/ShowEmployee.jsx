@@ -241,14 +241,20 @@ const ShowEmployee = () => {
     setImporting(true);
     try {
       const result = await employeeService.importMasterExcel(file);
-      const failed = (result.details || []).filter((row) => row.status === "failed");
+      const detailRows = (result.details || []).filter((row) =>
+        ["failed", "skipped", "updated", "created"].includes(row.status)
+      );
+      const noteworthy = detailRows.filter((row) =>
+        ["failed", "skipped"].includes(row.status)
+      );
+      const preview = (noteworthy.length ? noteworthy : detailRows).slice(0, 40);
       await Swal.fire({
         icon: result.failed ? "warning" : "success",
         title: "Excel import finished",
         html: `<p>${result.message || ""}</p>${
-          failed.length
-            ? `<pre class="text-left text-xs mt-2 max-h-40 overflow-auto">${failed
-                .map((row) => `${row.name}: ${row.reason}`)
+          preview.length
+            ? `<pre class="text-left text-xs mt-2 max-h-40 overflow-auto">${preview
+                .map((row) => `${row.status}: ${row.name} — ${row.reason}`)
                 .join("\n")}</pre>`
             : ""
         }`,
